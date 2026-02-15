@@ -11,6 +11,8 @@ import Admin from './pages/Admin';
 import Activity from './pages/Activity';
 import Promotion from './pages/Promotion';
 import Statistics from './pages/Statistics';
+import Trading from './pages/Trading';
+import TradingHistory from './pages/TradingHistory';
 
 // Guard for protected routes
 const ProtectedRoute = ({ children }: React.PropsWithChildren<{}>) => {
@@ -33,6 +35,8 @@ const AppRoutes = () => {
       <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
       <Route path="/promotion" element={<ProtectedRoute><Promotion /></ProtectedRoute>} />
       <Route path="/statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
+      <Route path="/trading" element={<ProtectedRoute><Trading /></ProtectedRoute>} />
+      <Route path="/trading-history" element={<ProtectedRoute><TradingHistory /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
     </Routes>
   );

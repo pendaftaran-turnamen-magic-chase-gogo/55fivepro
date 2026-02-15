@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../store';
-import { ArrowLeft, RefreshCw, CreditCard, Wallet as WalletIcon, History, Upload, Image as ImageIcon, Copy, AlertTriangle, X, CheckCircle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CreditCard, Wallet as WalletIcon, History, Upload, Image as ImageIcon, Copy, AlertTriangle, X, CheckCircle, Trash2, Plus, Building2, Smartphone } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { WithdrawAccount } from '../types';
 
 type WalletView = 'Main' | 'Deposit' | 'Withdraw' | 'History';
 
 export default function Wallet() {
-  const { balance, adminQrisImage, requestDeposit, transactions, user, addNotification } = useApp();
+  const { balance, adminQrisImage, requestDeposit, requestWithdraw, transactions, user, addNotification, addWithdrawAccount, removeWithdrawAccount } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [view, setView] = useState<WalletView>('Main');
@@ -28,6 +29,14 @@ export default function Wallet() {
 
   // Withdraw State
   const [withdrawAmount, setWithdrawAmount] = useState<number | null>(null);
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [showAddAccount, setShowAddAccount] = useState(false);
+  
+  // Add Account Form
+  const [accType, setAccType] = useState<'Bank' | 'E-Wallet'>('Bank');
+  const [bankName, setBankName] = useState('');
+  const [accName, setAccName] = useState('');
+  const [accNumber, setAccNumber] = useState('');
 
   const amounts = [20000, 50000, 150000, 200000, 500000, 1000000, 3000000, 5000000];
 
@@ -67,8 +76,44 @@ export default function Wallet() {
       setView('History');
   };
 
+  const saveAccount = () => {
+      if(!bankName || !accName || !accNumber) {
+          alert("Mohon lengkapi data!");
+          return;
+      }
+      const newAcc: WithdrawAccount = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: accType,
+          bankName,
+          accountName: accName,
+          accountNumber: accNumber
+      };
+      addWithdrawAccount(newAcc);
+      setShowAddAccount(false);
+      setBankName(''); setAccName(''); setAccNumber('');
+  };
+
   const submitWithdraw = () => {
-      alert("Sistem Withdraw sedang maintenance. Silakan coba lagi nanti.");
+      if (!withdrawAmount || withdrawAmount < 50000) {
+          alert("Minimal withdraw Rp50.000");
+          return;
+      }
+      if (withdrawAmount > balance) {
+          alert("Saldo tidak mencukupi");
+          return;
+      }
+      if (!selectedAccount) {
+          alert("Pilih metode penarikan");
+          return;
+      }
+      
+      const accDetails = user?.savedAccounts?.find(a => a.id === selectedAccount);
+      if(!accDetails) return;
+
+      requestWithdraw(withdrawAmount, accDetails);
+      addNotification('info', 'Withdraw Diproses', 'Permintaan penarikan sedang diproses.', '', 'bg-orange-500');
+      setWithdrawAmount(null);
+      setView('History');
   };
 
   const handleBack = () => {
@@ -85,9 +130,6 @@ export default function Wallet() {
       navigate('/');
   };
 
-  // --- SUB-COMPONENTS ---
-
-  // Removed animate-slide-up to prevent blinking on navigation
   const BalanceCard = () => (
       <div className="p-4 bg-gradient-to-r from-red-500 to-orange-400 text-white rounded-xl shadow-lg relative overflow-hidden mx-4 mt-4">
         <div className="absolute right-0 top-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10"></div>
@@ -266,7 +308,7 @@ export default function Wallet() {
                                                 <ImageIcon className="text-red-400" size={24} />
                                             </div>
                                             <span className="text-xs text-gray-500 font-medium">Klik untuk upload bukti</span>
-                                            <span className="text-[10px] text-gray-400 mt-1">Format: JPG, PNG</span>
+                                            <span className="text-xs text-gray-400 mt-1">Format: JPG, PNG</span>
                                         </>
                                     )}
                                     <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
@@ -293,26 +335,41 @@ export default function Wallet() {
       return (
           <div className="bg-gray-100 min-h-screen pb-20 animate-fade-in">
               <Header title="Withdraw" />
-              <div className="bg-red-600 p-4 mx-4 mt-4 rounded-xl text-white shadow-lg relative overflow-hidden">
-                   <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mt-10 -mr-10"></div>
-                   <p className="text-sm opacity-90 mb-1">Saldo yang tersedia</p>
-                   <div className="text-3xl font-bold flex items-center gap-2">
-                       Rp{balance.toLocaleString('id-ID')}
-                       <RefreshCw size={18} className="opacity-70"/>
-                   </div>
-                   <div className="flex justify-end mt-4 text-xs opacity-70 tracking-widest">**** **** **** 8829</div>
-              </div>
+              <BalanceCard />
 
               <div className="p-4">
-                  <div className="bg-red-500 text-white p-4 rounded-xl shadow-md mb-6 flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                          <CreditCard size={20} className="text-yellow-300" />
+                  <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="font-bold text-gray-800">Metode Penarikan</span>
+                        <button onClick={() => setShowAddAccount(true)} className="text-xs text-red-600 font-bold flex items-center gap-1 bg-red-50 px-2 py-1 rounded">
+                            <Plus size={12}/> Tambah
+                        </button>
                       </div>
-                      <div className="flex-1">
-                          <div className="font-bold">RekeningBank</div>
-                          <div className="text-xs opacity-80">083896****349</div>
-                      </div>
-                      <div className="text-white/50">›</div>
+
+                      {(!user?.savedAccounts || user.savedAccounts.length === 0) ? (
+                          <div className="text-center py-6 text-gray-400 text-xs border border-dashed rounded-lg">Belum ada rekening tersimpan</div>
+                      ) : (
+                          <div className="space-y-3">
+                              {user.savedAccounts.map(acc => (
+                                  <div 
+                                    key={acc.id} 
+                                    onClick={() => setSelectedAccount(acc.id)}
+                                    className={`p-3 rounded-lg border flex items-center justify-between cursor-pointer transition-all ${selectedAccount === acc.id ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-gray-300'}`}
+                                  >
+                                      <div className="flex items-center gap-3">
+                                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${acc.type === 'Bank' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}>
+                                              {acc.type === 'Bank' ? <Building2 size={16}/> : <Smartphone size={16}/>}
+                                          </div>
+                                          <div>
+                                              <div className="font-bold text-sm text-gray-800">{acc.bankName}</div>
+                                              <div className="text-xs text-gray-500">{acc.accountNumber} - {acc.accountName}</div>
+                                          </div>
+                                      </div>
+                                      <button onClick={(e) => { e.stopPropagation(); removeWithdrawAccount(acc.id); }} className="text-gray-400 hover:text-red-500 p-2"><Trash2 size={16}/></button>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
                   </div>
 
                   <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -337,30 +394,45 @@ export default function Wallet() {
                           <button onClick={() => setWithdrawAmount(balance)} className="text-red-500 font-bold border border-red-500 px-2 py-0.5 rounded">Semua</button>
                       </div>
 
-                      <button onClick={submitWithdraw} className="w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-full hover:bg-gray-400 transition-colors btn-press">
+                      <button onClick={submitWithdraw} className="w-full bg-red-600 text-white font-bold py-3 rounded-full hover:bg-red-700 transition-colors btn-press shadow-lg shadow-red-200">
                           Withdraw
                       </button>
                   </div>
+              </div>
 
-                  <div className="mt-6 space-y-2">
-                      <div className="flex items-start gap-2 text-xs text-gray-500">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
-                          <span>Perlu bertaruh <span className="text-red-500">Rp88.00</span> agar dapat withdraw</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-xs text-gray-500">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
-                          <span>Waktu withdraw <span className="text-red-500">00:00-23:55</span></span>
-                      </div>
-                      <div className="flex items-start gap-2 text-xs text-gray-500">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
-                          <span>Sisa penarikan dalam sehari <span className="text-red-500">3</span></span>
-                      </div>
-                       <div className="flex items-start gap-2 text-xs text-gray-500">
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1"></div>
-                          <span>Kisaran jumlah withdraw <span className="text-red-500">Rp50,000.00-Rp1,000,000,000.00</span></span>
+              {/* Add Account Modal */}
+              {showAddAccount && (
+                  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in">
+                      <div className="bg-white w-full max-w-sm rounded-2xl p-6 animate-pop">
+                          <div className="flex justify-between items-center mb-4">
+                              <h3 className="font-bold text-lg">Tambah Rekening</h3>
+                              <button onClick={() => setShowAddAccount(false)}><X size={20}/></button>
+                          </div>
+                          
+                          <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-lg">
+                              <button onClick={() => setAccType('Bank')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-colors ${accType === 'Bank' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}>Bank Transfer</button>
+                              <button onClick={() => setAccType('E-Wallet')} className={`flex-1 py-2 text-xs font-bold rounded-md transition-colors ${accType === 'E-Wallet' ? 'bg-white shadow text-gray-800' : 'text-gray-500'}`}>E-Wallet</button>
+                          </div>
+
+                          <div className="space-y-3">
+                              <div>
+                                  <label className="text-xs font-bold text-gray-500">Nama Bank / E-Wallet</label>
+                                  <input placeholder={accType === 'Bank' ? "BCA, BRI, Mandiri..." : "DANA, OVO, GoPay..."} className="w-full border rounded-lg p-3 text-sm mt-1 bg-gray-50" value={bankName} onChange={e => setBankName(e.target.value)} />
+                              </div>
+                              <div>
+                                  <label className="text-xs font-bold text-gray-500">Nama Pemilik Akun</label>
+                                  <input placeholder="Sesuai KTP/Buku Tabungan" className="w-full border rounded-lg p-3 text-sm mt-1 bg-gray-50" value={accName} onChange={e => setAccName(e.target.value)} />
+                              </div>
+                              <div>
+                                  <label className="text-xs font-bold text-gray-500">Nomor Rekening / HP</label>
+                                  <input type="number" placeholder="Contoh: 1234567890" className="w-full border rounded-lg p-3 text-sm mt-1 bg-gray-50" value={accNumber} onChange={e => setAccNumber(e.target.value)} />
+                              </div>
+                          </div>
+
+                          <button onClick={saveAccount} className="w-full mt-6 bg-red-600 text-white font-bold py-3 rounded-xl shadow-md">Simpan</button>
                       </div>
                   </div>
-              </div>
+              )}
           </div>
       );
   }
@@ -395,7 +467,10 @@ export default function Wallet() {
                                   </div>
                               </div>
                               <div className="flex justify-between items-center">
-                                  <div className="text-gray-500 text-xs">Metode: {tx.method}</div>
+                                  <div className="text-gray-500 text-xs">
+                                    {tx.method} 
+                                    {tx.withdrawDetails && ` • ${tx.withdrawDetails.bankName} (${tx.withdrawDetails.accountNumber})`}
+                                  </div>
                                   <div className="font-bold text-gray-800">Rp{tx.amount.toLocaleString()}</div>
                               </div>
                               {tx.status === 'pending' && tx.type === 'deposit' && (

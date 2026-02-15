@@ -20,6 +20,28 @@ export default function Statistics() {
       { name: 'Sun', win: 3490, loss: 4300 },
   ];
 
+  // Calculate Ball Frequency
+  const frequencyMap: Record<number, number> = {};
+  gameHistory.forEach(res => {
+      frequencyMap[res.number] = (frequencyMap[res.number] || 0) + 1;
+  });
+
+  const getBallColorName = (num: number) => {
+    if ([1, 3, 7, 9].includes(num)) return 'Hijau';
+    if ([2, 4, 6, 8].includes(num)) return 'Merah';
+    if (num === 0) return 'Ungu Merah';
+    if (num === 5) return 'Ungu Hijau';
+    return 'Unknown';
+  };
+  
+  const getBallColorClass = (num: number) => {
+    if ([1, 3, 7, 9].includes(num)) return 'bg-green-500';
+    if ([2, 4, 6, 8].includes(num)) return 'bg-red-500';
+    if (num === 0) return 'bg-gradient-to-r from-red-500 to-violet-500';
+    if (num === 5) return 'bg-gradient-to-r from-green-500 to-violet-500';
+    return 'bg-gray-400';
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen pb-20 animate-fade-in">
         <div className="bg-white p-4 flex items-center gap-4 sticky top-0 z-10 shadow-sm">
@@ -38,6 +60,37 @@ export default function Statistics() {
                 <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500">
                     <div className="text-xs text-gray-500 mb-1 flex items-center gap-1"><Activity size={14}/> Total Putaran</div>
                     <div className="font-bold text-xl">1,240</div>
+                </div>
+            </div>
+            
+            {/* BALL FREQUENCY SECTION */}
+            <div className="bg-white p-4 rounded-xl shadow-sm">
+                <h3 className="font-bold text-gray-800 mb-4 text-sm">Frekuensi Angka (20 Putaran Terakhir)</h3>
+                <div className="space-y-3">
+                    {[0,1,2,3,4,5,6,7,8,9].map(num => {
+                        const count = frequencyMap[num] || 0;
+                        const max = Math.max(...Object.values(frequencyMap), 1);
+                        const percent = (count / 20) * 100;
+                        
+                        if (count === 0) return null;
+
+                        return (
+                            <div key={num} className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm ${getBallColorClass(num)}`}>
+                                    {num}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="font-bold text-gray-700">Bola {getBallColorName(num)} {num}</span>
+                                        <span className="text-gray-500">Muncul {count}x</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                        <div className="h-full bg-gray-800 rounded-full" style={{ width: `${(count / max) * 100}%` }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )
+                    })}
                 </div>
             </div>
 

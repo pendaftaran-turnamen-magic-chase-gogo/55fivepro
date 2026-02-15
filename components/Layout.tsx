@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Wallet, User as UserIcon, Activity, Gift, ShieldAlert } from 'lucide-react';
+import { Home, Wallet, User as UserIcon, Activity, Gift, ShieldAlert, TrendingUp } from 'lucide-react';
 import { useApp } from '../store';
 import NotificationToast from './NotificationToast';
 
@@ -16,7 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navItems = [
     { icon: <Home size={24} />, label: 'Home', path: '/' },
     { icon: <Activity size={24} />, label: 'Activity', path: '/activity' },
-    { icon: <Gift size={24} />, label: 'Promotion', path: '/promotion' },
+    { icon: <TrendingUp size={24} />, label: 'Trading', path: '/trading' },
     { icon: <Wallet size={24} />, label: 'Wallet', path: '/wallet' },
     { icon: <UserIcon size={24} />, label: 'Account', path: '/profile' },
   ];

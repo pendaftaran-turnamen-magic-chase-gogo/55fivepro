@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../store';
-import { Volume2, FileText, RotateCw, Wallet, X, Headset, Send, Check, CheckCheck, User } from 'lucide-react';
+import { Volume2, FileText, RotateCw, Wallet, X, Headset, Send, Check, CheckCheck, User, Info, HelpCircle } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { GameMode } from '../types';
 
@@ -21,6 +21,7 @@ export default function Home() {
   
   // UI States
   const [showCS, setShowCS] = useState(false);
+  const [showRules, setShowRules] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -216,7 +217,7 @@ export default function Home() {
                 Selamat datang di 55five! Nikmati permainan Win Go dan menangkan hadiah besar setiap harinya. Pasang taruhan dengan bijak dan nikmati kemenangan Anda.
              </div>
         </div>
-        <button className="bg-red-600 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 btn-press flex-shrink-0">
+        <button onClick={() => setShowRules(true)} className="bg-red-600 text-white text-[10px] px-2 py-1 rounded-full flex items-center gap-1 btn-press flex-shrink-0 cursor-pointer">
            Rincian
         </button>
       </div>
@@ -239,10 +240,13 @@ export default function Home() {
       {/* Timer & Period Section */}
       <div className="mx-4 bg-image-pattern bg-cover bg-center rounded-xl p-4 text-white flex justify-between items-center" style={{ backgroundImage: 'linear-gradient(to right, #e0e0e0, #f3f3f3)', color: '#333' }}>
         <div className="flex-1 overflow-hidden">
-           <div className="flex items-center gap-1 border border-gray-300 rounded-full px-2 py-0.5 w-fit mb-1">
+           <button 
+              onClick={() => setShowRules(true)}
+              className="flex items-center gap-1 border border-gray-400 rounded-full px-2 py-0.5 w-fit mb-1 hover:bg-white/50 transition-colors"
+           >
               <FileText size={12} className="text-red-500"/>
-              <span className="text-[10px] text-gray-500">Cara bermain</span>
-           </div>
+              <span className="text-[10px] text-gray-600 font-bold">Cara bermain</span>
+           </button>
            <div className="text-xs text-gray-500 mb-1">Win Go {activeGameMode}</div>
            
            <div className="flex justify-start gap-2 h-8 overflow-hidden mask-gradient-right">
@@ -371,8 +375,8 @@ export default function Home() {
 
             {activeTab === 'History' && (
               <div className="space-y-3 animate-fade-in">
-                 {myBets.filter(b => b.gameMode === activeGameMode).length === 0 ? <div className="text-center text-gray-400 py-10">Tidak ada riwayat untuk mode {activeGameMode}</div> : 
-                  myBets.filter(b => b.gameMode === activeGameMode).map((bet) => (
+                 {myBets.filter(b => b.gameMode === activeGameMode && b.userId === user?.id).length === 0 ? <div className="text-center text-gray-400 py-10">Tidak ada riwayat untuk mode {activeGameMode}</div> : 
+                  myBets.filter(b => b.gameMode === activeGameMode && b.userId === user?.id).map((bet) => (
                     <div key={bet.id} className="border rounded-lg p-3 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow">
                        <div>
                           <div className="text-xs text-gray-400">ID: {bet.period.slice(-11)}</div>
@@ -392,6 +396,59 @@ export default function Home() {
             )}
          </div>
       </div>
+
+      {/* RULES MODAL */}
+      {showRules && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowRules(false)}>
+              <div className="bg-white w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-pop relative" onClick={e => e.stopPropagation()}>
+                  <div className="bg-red-600 p-4 text-white flex justify-between items-center">
+                      <h3 className="font-bold flex items-center gap-2"><HelpCircle size={20}/> Aturan Bermain</h3>
+                      <button onClick={() => setShowRules(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={20}/></button>
+                  </div>
+                  <div className="p-6 max-h-[70vh] overflow-y-auto">
+                      <div className="space-y-6">
+                          <div>
+                              <h4 className="font-bold text-green-600 mb-2 border-b border-green-100 pb-1">1. Hijau</h4>
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                  Jika hasil menunjukkan angka <strong>1, 3, 7, 9</strong>, Anda menang. (Odds 2x) <br/>
+                                  Jika hasil menunjukkan angka <strong>5</strong>, Anda menang setengah. (Odds 1.5x)
+                              </p>
+                          </div>
+                          <div>
+                              <h4 className="font-bold text-red-600 mb-2 border-b border-red-100 pb-1">2. Merah</h4>
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                  Jika hasil menunjukkan angka <strong>2, 4, 6, 8</strong>, Anda menang. (Odds 2x) <br/>
+                                  Jika hasil menunjukkan angka <strong>0</strong>, Anda menang setengah. (Odds 1.5x)
+                              </p>
+                          </div>
+                          <div>
+                              <h4 className="font-bold text-violet-600 mb-2 border-b border-violet-100 pb-1">3. Ungu</h4>
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                  Jika hasil menunjukkan angka <strong>0 atau 5</strong>, Anda menang. (Odds 4.5x)
+                              </p>
+                          </div>
+                          <div>
+                              <h4 className="font-bold text-gray-800 mb-2 border-b border-gray-200 pb-1">4. Angka (0-9)</h4>
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                  Jika hasil angka sama dengan pilihan Anda, Anda menang. (Odds 9x)
+                              </p>
+                          </div>
+                          <div>
+                              <h4 className="font-bold text-orange-500 mb-2 border-b border-orange-100 pb-1">5. Besar / Kecil</h4>
+                              <p className="text-xs text-gray-600 leading-relaxed">
+                                  <strong>Kecil:</strong> Angka 0-4 <br/>
+                                  <strong>Besar:</strong> Angka 5-9 <br/>
+                                  (Odds 2x)
+                              </p>
+                          </div>
+                      </div>
+                      <div className="mt-6 bg-gray-50 p-3 rounded-lg text-[10px] text-gray-500 text-center">
+                          *Semua kemenangan dipotong biaya administrasi 2%
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* MODAL TARUHAN */}
       {selectedBet && (
