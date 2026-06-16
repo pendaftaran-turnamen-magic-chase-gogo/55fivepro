@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../store';
-import { Settings, Copy, Wallet, Gift, BarChart2, MessageSquare, Globe, LogOut, X, Camera, RefreshCw, User as UserIcon, Mail, Phone, Lock, Headset, Send, Check, CheckCheck, Bell, ChevronRight, CheckCircle, TrendingUp, Image as ImageIcon } from 'lucide-react';
+import { Settings, Copy, Wallet, Gift, BarChart2, MessageSquare, Globe, LogOut, X, Camera, RefreshCw, User as UserIcon, Mail, Phone, Lock, Headset, Send, Check, CheckCheck, Bell, ChevronRight, CheckCircle, Image as ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const MessageStatus = ({ status }: { status: 'sent' | 'delivered' | 'read' }) => {
@@ -111,9 +111,9 @@ export default function Profile() {
        {/* Menu Grid */}
        <div className="grid grid-cols-2 gap-3 p-4">
           <MenuCard icon={<BarChart2 className="text-blue-500"/>} title="Taruhan" subtitle="Riwayat taruhan" delay={0.2} onClick={() => navigate('/activity')}/>
-          <MenuCard icon={<TrendingUp className="text-purple-500"/>} title="Trading" subtitle="Riwayat trading" delay={0.3} onClick={() => navigate('/trading-history')}/>
-          <MenuCard icon={<Settings className="text-green-500"/>} title="Transaksi" subtitle="Riwayat transaksi" delay={0.4} onClick={() => navigate('/wallet', { state: { view: 'History' } })}/>
-          <MenuCard icon={<Gift className="text-orange-500"/>} title="Hadiah" subtitle="Klaim bonus" delay={0.5} onClick={() => navigate('/promotion')}/>
+          
+          <MenuCard icon={<Settings className="text-green-500"/>} title="Transaksi" subtitle="Riwayat transaksi" delay={0.3} onClick={() => navigate('/wallet', { state: { view: 'History' } })}/>
+          <MenuCard icon={<Gift className="text-orange-500"/>} title="Hadiah" subtitle="Klaim bonus" delay={0.4} onClick={() => navigate('/promotion')}/>
        </div>
 
        {/* List Menu */}

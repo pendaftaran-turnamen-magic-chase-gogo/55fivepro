@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { User, GameResult, Bet, NotificationItem, GameMode, Role, ChatMessage, Transaction, WithdrawAccount, TradingPosition, MarketType, TradingDataPoint } from './types';
+import { User, GameResult, Bet, NotificationItem, GameMode, Role, ChatMessage, Transaction, WithdrawAccount } from './types';
 
 const MODE_CONFIG: Record<GameMode, { duration: number, prefix: string }> = {
   '30s': { duration: 30, prefix: '1' },
@@ -54,14 +54,6 @@ interface AppContextType {
   processTransaction: (id: string, action: 'approve' | 'reject') => void;
   adminQrisImage: string;
   setAdminQrisImage: (url: string) => void;
-
-  // Trading System (Dual Market)
-  marketPrices: Record<MarketType, number>;
-  marketHistories: Record<MarketType, TradingDataPoint[]>;
-  tradingPositions: TradingPosition[];
-  openPosition: (amount: number, market: MarketType, direction: 'Buy' | 'Sell') => void;
-  closePosition: (positionId: string) => void;
-  closeAllPositions: (type: 'All' | 'Profit' | 'Loss', market: MarketType) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -133,70 +125,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [notificationQueue, setNotificationQueue] = useState<NotificationItem[]>([]);
   const [activeNotification, setActiveNotification] = useState<NotificationItem | null>(null);
 
-  // Trading State
-  const [marketPrices, setMarketPrices] = useState<Record<MarketType, number>>({
-      '55Five': 42000.00,
-      'PreA': 1000.00 // Start base price for PreA
-  });
-  
-  const [marketHistories, setMarketHistories] = useState<Record<MarketType, TradingDataPoint[]>>({
-      '55Five': [],
-      'PreA': []
-  });
-  
-  const [tradingPositions, setTradingPositions] = useState<TradingPosition[]>([]);
-  
   const lastProcessedPeriods = useRef<Record<GameMode, string>>({
       '30s': '', '1Min': '', '3Min': '', '5Min': ''
   });
-
-  // --- WEBSOCKET FOR REAL MARKET (55Five = BTC/USDT) ---
-  useEffect(() => {
-    const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_1m');
-    ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.e === 'kline') {
-            const k = message.k;
-            const currentPrice = parseFloat(k.c);
-            setMarketPrices(prev => ({...prev, '55Five': currentPrice}));
-            setMarketHistories(prev => {
-                const newPoint: TradingDataPoint = {
-                    time: k.t, price: currentPrice, open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c)
-                };
-                const currentHistory = prev['55Five'];
-                // Update or Append
-                const lastPoint = currentHistory[currentHistory.length - 1];
-                let newHistory;
-                if (lastPoint && lastPoint.time === newPoint.time) {
-                     // Update current minute candle
-                    newHistory = [...currentHistory.slice(0, -1), newPoint];
-                } else {
-                    // New minute candle
-                    newHistory = [...currentHistory, newPoint];
-                }
-                return { ...prev, '55Five': newHistory.slice(-100) };
-            });
-        }
-    };
-    return () => { ws.close(); };
-  }, []);
-
-  // Initialize PreA History (Synthetic)
-  useEffect(() => {
-     const initPreA = () => {
-         const data: TradingDataPoint[] = [];
-         let p = 1000.00;
-         const now = Date.now();
-         for(let i=0; i<50; i++) {
-             // Fake volatility for initial chart
-             p = p * (1 + (Math.random() - 0.5) * 0.01);
-             data.push({ time: now - (50-i)*60000, price: p, open: p, high: p, low: p, close: p });
-         }
-         setMarketHistories(prev => ({...prev, 'PreA': data}));
-         setMarketPrices(prev => ({...prev, 'PreA': p}));
-     };
-     initPreA();
-  }, []);
 
   const addNotification = (type: 'win' | 'loss' | 'info', title: string, message: string, amount?: string, accentColor?: string, ballNumber?: string) => {
       setNotificationQueue(prev => [...prev, {
@@ -248,10 +179,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setTimeLeft(activeConfig.duration - activeCycle);
         setPeriodId(`${dateStr}${activeConfig.prefix}${Math.floor(totalSeconds / activeConfig.duration)}`);
 
-        // Flag to track if PreA price needs update in this tick
-        let preAPriceChangePercent = 0;
-        let preAUpdated = false;
-
         (['30s', '1Min', '3Min', '5Min'] as GameMode[]).forEach(mode => {
             const config = MODE_CONFIG[mode];
             const currentPeriodIndex = Math.floor(totalSeconds / config.duration);
@@ -274,15 +201,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     [mode]: [newResult, ...(prev[mode] || [])]
                 }));
                 lastProcessedPeriods.current[mode] = finishedPeriodId;
-
-                // --- PreA Pricing Logic ---
-                // 5,6,7,8,9 = +1% Profit | 0,1,2,3,4 = -1.5% Loss (Mines)
-                if (newResult.number >= 5) {
-                    preAPriceChangePercent += 0.01; // +1%
-                } else {
-                    preAPriceChangePercent -= 0.015; // -1.5%
-                }
-                preAUpdated = true;
 
                 // Process WIN GO Bets
                 setMyBets(prevBets => prevBets.map(bet => {
@@ -316,96 +234,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             }
         });
 
-        // --- Update PreA Price if changed ---
-        if (preAUpdated) {
-             setMarketPrices(prev => {
-                const oldPrice = prev['PreA'];
-                let newPrice = oldPrice * (1 + preAPriceChangePercent);
-                if (newPrice < 10) newPrice = 10; // Floor price
-
-                setMarketHistories(h => {
-                    // Update history
-                    return { 
-                        ...h, 
-                        'PreA': [...h['PreA'], { time: timeString, price: newPrice, open: oldPrice, high: Math.max(oldPrice, newPrice), low: Math.min(oldPrice, newPrice), close: newPrice }].slice(-100) 
-                    };
-                });
-                return { ...prev, 'PreA': newPrice };
-            });
-        }
-
     }, 1000);
     return () => clearInterval(timer);
   }, [activeGameMode, forcedResults, realBalance, user, predictedResults]);
-
-  // --- TRADING LOGIC (MT5 Style) ---
-  const openPosition = (amount: number, market: MarketType, direction: 'Buy' | 'Sell') => {
-      const currentBal = isDemo ? demoBalance : realBalance;
-      if (currentBal < amount) { alert("Saldo tidak mencukupi!"); return; }
-      
-      updateBalance(-amount); // Deduct margin
-      
-      const newPos: TradingPosition = { 
-          id: 'pos_' + Date.now(), 
-          userId: user?.id || 'guest', 
-          market, 
-          direction,
-          entryPrice: marketPrices[market], 
-          amount: amount, 
-          leverage: 1, // Simplified 1x leverage for this implementation
-          timestamp: Date.now(), 
-          status: 'Open' 
-      };
-      
-      setTradingPositions(prev => [newPos, ...prev]);
-      addNotification('info', 'Trading Opened', `${direction} ${market}`, `Rp${amount.toLocaleString()}`, direction === 'Buy' ? 'bg-green-500' : 'bg-red-500');
-  };
-
-  const closePosition = (positionId: string) => {
-      setTradingPositions(prev => prev.map(pos => {
-          if (pos.id === positionId && pos.status === 'Open') {
-              const currentPrice = marketPrices[pos.market];
-              
-              // Calculate PnL based on Direction
-              let pnlPercent = 0;
-              if (pos.direction === 'Buy') {
-                  pnlPercent = (currentPrice - pos.entryPrice) / pos.entryPrice;
-              } else {
-                  pnlPercent = (pos.entryPrice - currentPrice) / pos.entryPrice;
-              }
-              
-              const profit = pos.amount * pnlPercent * pos.leverage;
-              const returnAmount = pos.amount + profit;
-
-              updateBalance(returnAmount); // Return margin + profit (or margin - loss)
-              
-              addNotification(profit >= 0 ? 'win' : 'loss', 'Trading Closed', profit >= 0 ? 'Profit' : 'Loss', `Rp${Math.round(profit).toLocaleString()}`, profit >= 0 ? 'bg-green-500' : 'bg-red-500');
-              
-              return { ...pos, status: 'Closed', closePrice: currentPrice, closeTime: Date.now(), profit: profit };
-          }
-          return pos;
-      }));
-  };
-
-  const closeAllPositions = (type: 'All' | 'Profit' | 'Loss', market: MarketType) => {
-      // Create a temporary copy to iterate safely
-      const currentPositions = [...tradingPositions]; 
-      const activePositions = currentPositions.filter(p => p.status === 'Open' && p.market === market);
-      
-      activePositions.forEach(pos => {
-          const currentPrice = marketPrices[market];
-          // Recalculate PnL
-          let pnlPercent = 0;
-          if (pos.direction === 'Buy') pnlPercent = (currentPrice - pos.entryPrice) / pos.entryPrice;
-          else pnlPercent = (pos.entryPrice - currentPrice) / pos.entryPrice;
-          
-          const profit = pos.amount * pnlPercent * pos.leverage;
-
-          if (type === 'All') closePosition(pos.id);
-          else if (type === 'Profit' && profit > 0) closePosition(pos.id);
-          else if (type === 'Loss' && profit < 0) closePosition(pos.id);
-      });
-  };
 
   // Actions
   const login = (identity: string, pass?: string) => {
@@ -612,8 +443,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       activeNotification, addNotification,
       csMessages, sendCSMessage, markChatAsRead,
       transactions, requestDeposit, requestWithdraw, processTransaction,
-      adminQrisImage, setAdminQrisImage,
-      marketPrices, marketHistories, tradingPositions, openPosition, closePosition, closeAllPositions
+      adminQrisImage, setAdminQrisImage
     }}>
       {children}
     </AppContext.Provider>

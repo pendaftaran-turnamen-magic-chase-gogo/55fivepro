@@ -39,10 +39,10 @@ export default function Admin() {
       activeGameMode, forcedResults, predictedResults, setForcedResult, allActiveBets,
       csMessages, sendCSMessage, markChatAsRead,
       transactions, processTransaction, adminQrisImage, setAdminQrisImage,
-      marketPrices, tradingPositions, periodId, timeLeft
+      periodId, timeLeft
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Game' | 'Users' | 'CS' | 'Deposit' | 'Trading'>('Dashboard');
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Game' | 'Users' | 'CS' | 'Deposit'>('Dashboard');
   const [selectedMode, setSelectedMode] = useState<GameMode>('30s');
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,7 +197,7 @@ export default function Admin() {
         {/* Navigation */}
         <div className="px-4 mt-4 overflow-x-auto no-scrollbar">
             <div className="bg-white rounded-full p-1 flex shadow-sm min-w-max">
-                {(['Dashboard', 'Game', 'Users', 'Deposit', 'CS', 'Trading'] as const).map(tab => (
+                {(['Dashboard', 'Game', 'Users', 'Deposit', 'CS'] as const).map(tab => (
                     <button 
                         key={tab}
                         onClick={() => setActiveTab(tab)}
@@ -430,41 +430,7 @@ export default function Admin() {
                 </div>
             )}
             
-            {activeTab === 'Trading' && (
-                <div className="bg-white p-5 rounded-xl shadow-lg">
-                    <h3 className="font-bold text-gray-800 mb-4">Trading Market Control</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="border p-3 rounded-lg">
-                            <div className="text-xs text-gray-500">55Five Price</div>
-                            <div className="font-bold text-xl">{marketPrices['55Five'].toFixed(2)}</div>
-                        </div>
-                        <div className="border p-3 rounded-lg">
-                            <div className="text-xs text-gray-500">PreA Price</div>
-                            <div className="font-bold text-xl">{marketPrices['PreA'].toFixed(2)}</div>
-                        </div>
-                    </div>
-                    
-                    <h3 className="font-bold text-gray-800 mb-2 text-sm">Open Positions ({tradingPositions.filter(p=>p.status==='Open').length})</h3>
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                         {tradingPositions.filter(p=>p.status==='Open').map(pos => {
-                             const currentPrice = marketPrices[pos.market];
-                             const growth = currentPrice / pos.entryPrice;
-                             const profit = (pos.amount * growth) - pos.amount;
-                             return (
-                                 <div key={pos.id} className="bg-gray-50 p-2 rounded text-xs flex justify-between items-center">
-                                     <div>
-                                         <div className="font-bold">{pos.market} - {pos.userId}</div>
-                                         <div>Entry: {pos.entryPrice.toFixed(2)}</div>
-                                     </div>
-                                     <div className={`font-bold ${profit>=0?'text-green-600':'text-red-600'}`}>
-                                         {profit>=0?'+':''}Rp{Math.round(profit).toLocaleString()}
-                                     </div>
-                                 </div>
-                             )
-                         })}
-                    </div>
-                </div>
-            )}
+
 
              {activeTab === 'CS' && (
                 <div className="bg-white rounded-xl shadow-lg h-[80vh] flex overflow-hidden border border-gray-200 relative">
